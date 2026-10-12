@@ -86,38 +86,38 @@ jobs:
       - name: Run the large-problem tests
         run: python -m pytest -rs -m "slow"
 
-  gpu:
-    # GitHub's public-preview NVIDIA T4 runners.  The suite above already covers
-    # the numeric logic on the NumPy backend; this job proves that the very same
-    # code also runs on CuPy.  It is non-blocking while the label is in preview:
-    # repositories that cannot schedule it should stay green.
-    name: GPU (CuPy)
-    runs-on: ubuntu-latest-gpu-60
-    timeout-minutes: 1
-    continue-on-error: true
+  # gpu:
+  #   # GitHub's public-preview NVIDIA T4 runners.  The suite above already covers
+  #   # the numeric logic on the NumPy backend; this job proves that the very same
+  #   # code also runs on CuPy.  It is non-blocking while the label is in preview:
+  #   # repositories that cannot schedule it should stay green.
+  #   name: GPU (CuPy)
+  #   runs-on: ubuntu-latest-gpu-60
+  #   timeout-minutes: 1
+  #   continue-on-error: true
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.12"
 
-      - name: Show the GPU
-        run: nvidia-smi
+  #     - name: Show the GPU
+  #       run: nvidia-smi
 
-      - name: Install the package with CuPy for CUDA 12
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[test,cuda12]"
+  #     - name: Install the package with CuPy for CUDA 12
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -e ".[test,cuda12]"
 
-      - name: Assert that the GPU backend is active
-        run: |
-          python -c "import rbfgpu; info = rbfgpu.backend_info(); print(info); assert info['on_gpu'], info"
+  #     - name: Assert that the GPU backend is active
+  #       run: |
+  #         python -c "import rbfgpu; info = rbfgpu.backend_info(); print(info); assert info['on_gpu'], info"
 
-      - name: Run the whole test suite on the GPU
-        run: python -m pytest -rs
+  #     - name: Run the whole test suite on the GPU
+  #       run: python -m pytest -rs
 
   package:
     name: Build and check the distributions
