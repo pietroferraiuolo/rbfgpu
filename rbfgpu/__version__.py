@@ -12,7 +12,7 @@ __description__ = (
     "Thin plate spline and general RBF interpolation that runs on the GPU through "
     "XuPy (CuPy) and transparently falls back to NumPy on the CPU."
 )
-__version__ = "1.0"
+__version__ = "1.0.0"
 __author__ = "Pietro Ferraiuolo"
 __maintainer__ = "Pietro Ferraiuolo"
 __author_email__ = "pietro.ferraiuolo@inaf.it"
