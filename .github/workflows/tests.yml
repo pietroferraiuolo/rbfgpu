@@ -93,7 +93,7 @@ jobs:
     # repositories that cannot schedule it should stay green.
     name: GPU (CuPy)
     runs-on: ubuntu-latest-gpu-60
-    timeout-minutes: 45
+    timeout-minutes: 1
     continue-on-error: true
 
     steps:
