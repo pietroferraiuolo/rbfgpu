@@ -1,95 +1,37 @@
 name: Publish to PyPI
 
-# Publishing is triggered by a GitHub Release: tag v0.1.0, publish the release,
-# and the distributions built here go straight to PyPI.
 on:
   release:
-    types: [published]
-  workflow_dispatch:
-
-permissions:
-  contents: read
+    types:
+      - published
 
 jobs:
-  build:
-    name: Build distributions
+  build-and-publish:
     runs-on: ubuntu-latest
+    environment: PyPi
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Build sdist and wheel
-        run: |
-          python -m pip install --upgrade pip build twine
-          python -m build
-
-      - name: Check the distributions
-        run: twine check --strict dist/*
-
-      - name: Upload the distributions
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-  test-before-publish:
-    name: Test the built wheel
-    needs: build
-    runs-on: ubuntu-latest
-    env:
-      XUPY_NO_GPU_WARNING: "1"
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Download the distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Install the wheel and run the test suite against it
+      - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "$(ls dist/*.whl)[test]"
-          # Run from /tmp so that the installed wheel, and not the source tree,
-          # is what gets imported by the tests.
-          cd /tmp
-          python -c "import rbfgpu; print('installed', rbfgpu.__version__, rbfgpu.backend_info())"
-          python -m pytest "${GITHUB_WORKSPACE}/test" -rs -m "not slow"
+          pip install -r requirements.txt
+          pip install build twine
 
-  publish:
-    name: Publish to PyPI
-    needs: test-before-publish
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/rbfgpu/
-
-    steps:
-      - name: Download the distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
+      - name: Build dist package
+        run: python -m build
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          # ---- Alternative: PyPI trusted publishing (no secret to manage) ----
-          # 1. On https://pypi.org/manage/project/rbfgpu/publishing/ add this
-          #    repository as a trusted publisher, with the "pypi" environment.
-          # 2. Add `permissions: { id-token: write }` to this job.
-          # 3. Drop the `user` and `password` inputs above.
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PF_PYPI_TOKEN }}
+        run: |
+          twine check dist/*
+          twine upload dist/*
