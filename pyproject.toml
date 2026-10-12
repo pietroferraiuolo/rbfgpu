@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rbfgpu"
+dynamic = ["version"]
+description = "GPU/CPU agnostic Radial Basis Function interpolation (thin plate splines and friends) on top of XuPy."
+authors = [
+    { name = "Pietro Ferraiuolo", email = "pietro.ferraiuolo@inaf.it" }
+]
+maintainers = [
+    { name = "Pietro Ferraiuolo", email = "pietro.ferraiuolo@inaf.it" }
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = [
+    "rbf",
+    "radial basis function",
+    "thin plate spline",
+    "interpolation",
+    "scattered data",
+    "gpu",
+    "cupy",
+    "numpy",
+    "scipy",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=2.0",
+    "xupy>=2.0",
+]
+
+[project.optional-dependencies]
+cuda12 = ["cupy-cuda12x>=14"]
+cuda13 = ["cupy-cuda13x>=14"]
+test = ["pytest", "pytest-cov", "scipy"]
+
+[project.urls]
+Homepage = "https://github.com/pietroferraiuolo/rbfgpu"
+Repository = "https://github.com/pietroferraiuolo/rbfgpu"
+Issues = "https://github.com/pietroferraiuolo/rbfgpu/issues"
+Changelog = "https://github.com/pietroferraiuolo/rbfgpu/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["rbfgpu"]
+
+[tool.setuptools.package-data]
+rbfgpu = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = { attr = "rbfgpu.__version__.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: large problems, worth a few seconds (deselect with -m 'not slow')",
+]
+
+[tool.coverage.run]
+source = ["rbfgpu"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]

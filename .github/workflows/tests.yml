@@ -1,0 +1,154 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Every Monday at 08:00 UTC: catch a broken numpy / xupy / scipy release.
+    - cron: "0 8 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  # The runners have no GPU: do not let XuPy warn about the missing CuPy.
+  XUPY_NO_GPU_WARNING: "1"
+
+jobs:
+  cpu:
+    name: CPU (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('pyproject.toml', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.python-version }}-pip-
+
+      - name: Install the package with its test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Show the resolved backend
+        # rbfgpu must import and run on the NumPy fallback, with no GPU present.
+        run: |
+          python -c "import rbfgpu; print('rbfgpu', rbfgpu.__version__)"
+          python -c "import rbfgpu; print(rbfgpu.backend_info())"
+          python -c "import rbfgpu; print('kernels:', rbfgpu.available_kernels())"
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          # Hard errors only: undefined names, syntax errors, invalid comparisons.
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=127
+          # Style report, informational.
+          flake8 . --count --exit-zero --max-complexity=12 --max-line-length=100 --statistics
+
+      - name: Run the test suite
+        run: python -m pytest -rs -m "not slow" --cov=rbfgpu --cov-report=term-missing
+
+  slow:
+    name: Slow tests (Python 3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package with its test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Run the large-problem tests
+        run: python -m pytest -rs -m "slow"
+
+  gpu:
+    # GitHub's public-preview NVIDIA T4 runners.  The suite above already covers
+    # the numeric logic on the NumPy backend; this job proves that the very same
+    # code also runs on CuPy.  It is non-blocking while the label is in preview:
+    # repositories that cannot schedule it should stay green.
+    name: GPU (CuPy)
+    runs-on: ubuntu-latest-gpu-60
+    timeout-minutes: 45
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Show the GPU
+        run: nvidia-smi
+
+      - name: Install the package with CuPy for CUDA 12
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test,cuda12]"
+
+      - name: Assert that the GPU backend is active
+        run: |
+          python -c "import rbfgpu; info = rbfgpu.backend_info(); print(info); assert info['on_gpu'], info"
+
+      - name: Run the whole test suite on the GPU
+        run: python -m pytest -rs
+
+  package:
+    name: Build and check the distributions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+
+      - name: Check the metadata and the long description
+        run: twine check --strict dist/*
+
+      - name: Install the wheel in a clean environment and import it
+        run: |
+          python -m venv /tmp/wheel-env
+          /tmp/wheel-env/bin/pip install --quiet dist/*.whl
+          cd /tmp
+          /tmp/wheel-env/bin/python -c "import rbfgpu; print('installed', rbfgpu.__version__)"
+
+      - name: Upload the distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

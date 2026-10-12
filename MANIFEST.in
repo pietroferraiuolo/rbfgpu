@@ -1,0 +1,16 @@
+# Source distribution manifest: everything needed to run the test suite and the
+# benchmarks from an extracted sdist (the wheel only carries the rbfgpu package).
+include LICENSE
+include README.md
+include CHANGELOG.md
+include requirements.txt
+include pyproject.toml
+
+recursive-include test *.py
+recursive-include benchmarks *.py
+
+global-exclude *.py[cod]
+prune **/__pycache__
+prune .github
+prune dist
+prune build
